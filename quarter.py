@@ -1,3 +1,16 @@
+"""
+Quarter.py
+by Phil Cote
+Description: A Blender Addon I wrote for experimenting with quaternions.
+Status:
+Added a little something to allow for a spiraling effect.
+
+Other stuff todo....
+1.  It would probably make sense to allow for adjustable spiraling or 
+some kind of min.
+2.  Try it as a curve addon.
+
+"""
 import bpy
 import bmesh
 from mathutils import Quaternion, Vector
@@ -7,7 +20,14 @@ from bpy.props import IntProperty
 def get_mesh_data(rad=5, point_count=10):
     axis = [0,0,-1]
     quats = [ Quaternion(axis, x) for x in range(1, point_count)] 
+    
     vecs = [q * Vector((rad,0,0)) for q in quats]   
+    vecs = []
+    for q in quats:
+        vec = q * Vector((rad,0,0))
+        vecs.append(vec)
+        rad+=.25
+    
     coords = [(v.x,v.y,v.z) for v in vecs]
     return coords
 
