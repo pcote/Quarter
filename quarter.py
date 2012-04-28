@@ -1,14 +1,10 @@
 """
 Quarter.py
 by Phil Cote
-Description: A Blender Addon I wrote for experimenting with quaternions.
+Description: Generates spiral curves using quaternions.
 Status:
-Added a little something to allow for a spiraling effect.
-
-Other stuff todo....
-1.  It would probably make sense to allow for adjustable spiraling or 
-some kind of min.
-2.  Try it as a curve addon.
+The basic idea is there and working.  It could probably use some
+additional touches though.
 
 """
 import bpy
@@ -45,16 +41,24 @@ class QuatOperator(bpy.types.Operator):
         min = 1, max = 10, default = 5)
 
     def execute(self, context):
+        # set up the mesh data to be more suitable for curve objects.
         mesh_data = get_mesh_data(rad=self.radius, point_count = self.pc)
-        mesh = bpy.data.meshes.new("quat_mesh")
-        bm = bmesh.new()
-        
-        for data_pt in mesh_data:
-            bm.verts.new(data_pt)
+        flat_list = []
+        for md in mesh_data:
+            flat_list.extend(md)
             
-        bm.to_mesh(mesh)
-        mesh.update()
-        ob = bpy.data.objects.new("quat_ob", mesh)        
+        # build the curve
+        crv = bpy.data.curves.new("crv", type="CURVE")
+        spln = crv.splines.new(type="BEZIER")
+        points = spln.bezier_points
+        points.add(self.pc - 2)
+        
+        points.foreach_set("co", flat_list)
+        for point in points:
+            point.handle_left_type = "AUTO"
+            point.handle_right_type = "AUTO"
+            
+        ob = bpy.data.objects.new("quat_ob", crv)        
         bpy.context.scene.objects.link(ob)
         
         return {'FINISHED'}
