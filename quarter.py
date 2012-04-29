@@ -3,26 +3,28 @@ Quarter.py
 by Phil Cote
 Description: Generates spiral curves using quaternions.
 Status:
-The basic idea is there and working.  It could probably use some
-additional touches though.
+Does mostly what I want but could probably use a more sensible 
+turn rate.
 
 """
 import bpy
 import bmesh
 from mathutils import Quaternion, Vector
 from math import pi
-from bpy.props import IntProperty
+from bpy.props import IntProperty, FloatProperty
 
-def get_mesh_data(rad=5, point_count=10):
+def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0):
     axis = [0,0,-1]
+    cur_z = 0
     quats = [ Quaternion(axis, x) for x in range(1, point_count)] 
     
     vecs = [q * Vector((rad,0,0)) for q in quats]   
     vecs = []
     for q in quats:
-        vec = q * Vector((rad,0,0))
+        vec = q * Vector((rad,0,cur_z))
         vecs.append(vec)
-        rad+=.25
+        rad+=turn_width
+        cur_z+=turn_height
     
     coords = [(v.x,v.y,v.z) for v in vecs]
     return coords
@@ -39,10 +41,18 @@ class QuatOperator(bpy.types.Operator):
     radius = IntProperty(
         name = "Radius", description = "Radius",
         min = 1, max = 10, default = 5)
+    turn_width = FloatProperty(name="Turn Width",
+                   min = -.5, max=1.0, default=.5)
+    turn_height = FloatProperty(name="Turn Height",
+                    min=-1.0, max=1.0,default=0)
 
     def execute(self, context):
+        
         # set up the mesh data to be more suitable for curve objects.
-        mesh_data = get_mesh_data(rad=self.radius, point_count = self.pc)
+        mesh_data = get_mesh_data(rad=self.radius, 
+                                  point_count=self.pc,
+                                  turn_width=self.turn_width,
+                                  turn_height=self.turn_height)
         flat_list = []
         for md in mesh_data:
             flat_list.extend(md)
