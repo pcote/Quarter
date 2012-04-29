@@ -16,9 +16,12 @@ from bpy.props import IntProperty, FloatProperty
 def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0):
     axis = [0,0,-1]
     cur_z = 0
-    quats = [ Quaternion(axis, x) for x in range(1, point_count)] 
+    PI_2 = pi * 2
+    num_of_turns = 0
     
-    vecs = [q * Vector((rad,0,0)) for q in quats]   
+    x_vals = [x for x in range(1, point_count)]
+    quats = [ Quaternion(axis, x) for x in x_vals] 
+      
     vecs = []
     for q in quats:
         vec = q * Vector((rad,0,cur_z))
@@ -37,12 +40,12 @@ class QuatOperator(bpy.types.Operator):
     
     pc = IntProperty(
         name = "Point Count", description = "Point Count",
-        min = 5, max = 50, default = 5)
+        min = 3, max = 50, default = 3)
     radius = IntProperty(
         name = "Radius", description = "Radius",
-        min = 1, max = 10, default = 5)
+        min = 1, max = 10, default = 1)
     turn_width = FloatProperty(name="Turn Width",
-                   min = -.5, max=1.0, default=.5)
+                   min = -.5, max=1.0, default=0)
     turn_height = FloatProperty(name="Turn Height",
                     min=-1.0, max=1.0,default=0)
 
