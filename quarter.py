@@ -3,9 +3,7 @@ Quarter.py
 by Phil Cote
 Description: Generates spiral curves using quaternions.
 Status:
-Does mostly what I want but could probably use a more sensible 
-turn rate.
-
+It works pretty well.
 """
 import bpy
 import bmesh
@@ -13,14 +11,19 @@ from mathutils import Quaternion, Vector
 from math import pi
 from bpy.props import IntProperty, FloatProperty
 
-def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0):
+def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0,
+                    points_per_turn=5):
+    
     axis = [0,0,-1]
     cur_z = 0
     PI_2 = pi * 2
+    ppt = points_per_turn-1
     num_of_turns = 0
+    point_count -= 1 #offset for the one point already in the new curve.
     
-    x_vals = [x for x in range(1, point_count)]
-    quats = [ Quaternion(axis, x) for x in x_vals] 
+    x_vals = [x for x in range(1, point_count+2)]
+    x_vals = [(x/ppt)*PI_2 for x in x_vals]
+    quats = [Quaternion(axis, x) for x in x_vals] 
       
     vecs = []
     for q in quats:
@@ -30,6 +33,8 @@ def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0):
         cur_z+=turn_height
     
     coords = [(v.x,v.y,v.z) for v in vecs]
+    print( "coord data")
+    print( coords )
     return coords
 
 
@@ -40,7 +45,7 @@ class QuatOperator(bpy.types.Operator):
     
     pc = IntProperty(
         name = "Point Count", description = "Point Count",
-        min = 3, max = 50, default = 3)
+        min = 3, max = 50, default = 5)
     radius = IntProperty(
         name = "Radius", description = "Radius",
         min = 1, max = 10, default = 1)
@@ -48,6 +53,8 @@ class QuatOperator(bpy.types.Operator):
                    min = -.5, max=1.0, default=0)
     turn_height = FloatProperty(name="Turn Height",
                     min=-1.0, max=1.0,default=0)
+    points_per_turn = IntProperty(name="Points Per Turn",
+                    min=3,max=30,default=5)
 
     def execute(self, context):
         
@@ -55,7 +62,8 @@ class QuatOperator(bpy.types.Operator):
         mesh_data = get_mesh_data(rad=self.radius, 
                                   point_count=self.pc,
                                   turn_width=self.turn_width,
-                                  turn_height=self.turn_height)
+                                  turn_height=self.turn_height,
+                                  points_per_turn=self.points_per_turn)
         flat_list = []
         for md in mesh_data:
             flat_list.extend(md)
@@ -64,13 +72,13 @@ class QuatOperator(bpy.types.Operator):
         crv = bpy.data.curves.new("crv", type="CURVE")
         spln = crv.splines.new(type="BEZIER")
         points = spln.bezier_points
-        points.add(self.pc - 2)
+        points.add(self.pc-1)
         
         points.foreach_set("co", flat_list)
         for point in points:
             point.handle_left_type = "AUTO"
             point.handle_right_type = "AUTO"
-            
+         
         ob = bpy.data.objects.new("quat_ob", crv)        
         bpy.context.scene.objects.link(ob)
         
