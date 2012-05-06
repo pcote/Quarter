@@ -15,12 +15,7 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
-"""
-Last Update: May 6, 2012
-Comments:
-Taper Width and Height both work but the code needs a little refactoring
-now.
-"""
+
 
 import bpy
 from mathutils import Quaternion, Vector
@@ -40,7 +35,7 @@ bl_info = {
 
 
 def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0.0,
-                    points_per_turn=5, taper=0.0, w_taper=0.0):
+                    points_per_turn=5, h_taper=0.0, w_taper=0.0):
     
     axis = [0,0,-1]
     cur_z = 0
@@ -53,23 +48,22 @@ def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0.0,
     x_vals = [(x/ppt)*PI_2 for x in x_vals]
     quats = [Quaternion(axis, x) for x in x_vals]
     
-    turn_heights = []
-    for i, q in enumerate(quats):
-        if i % points_per_turn == 0:
-            turn_height -= taper
-        turn_heights.append(turn_height) 
+    def taper_values(turn_factor, taper):
+        """Adjust heights or widths for tapering as needed"""
+        new_list = []
         
-    # zero out any negative turn heights
-    turn_heights = [x if x > 0 else 0 for x in turn_heights]
+        for i, q in enumerate(quats):
+            if i % points_per_turn == 0:
+                turn_factor -= taper
+            new_list.append(turn_factor)
+        
+        # zero out negative values
+        #new_list = [x if x > 0 else 0 for x in new_list]
+                
+        return new_list        
     
-    turn_widths = []
-    for i, q in enumerate(quats):
-        if i% points_per_turn == 0:
-            turn_width -= w_taper
-        turn_widths.append(turn_width)
-    
-    # zero out any negative turn widths
-    turn_widths = [x if x > 0 else 0 for x in turn_widths]
+    turn_heights = taper_values(turn_height, h_taper)
+    turn_widths = taper_values(turn_width, w_taper)
     
     vecs = []
     for i, q in enumerate(quats):
@@ -96,17 +90,17 @@ class QuatOperator(bpy.types.Operator):
         name = "Radius", description = "Radius",
         min = .1, max = 10, default = 1)
     turn_width = FloatProperty(name="Turn Width",
-                   min = -.5, max=1.0, default=0)
+                   min = -1.0, max=1.0, default=0)
     turn_height = FloatProperty(name="Turn Height",
                     min=-1.0, max=1.0,default=0)
     points_per_turn = IntProperty(name="Points Per Turn",
                     min=3,max=30,default=5)
-    taper = FloatProperty(name="Height Taper", 
+    h_taper = FloatProperty(name="Height Taper", 
                         description="How much to decrease each turn height",
-                        min=0, max=1,default=0)
+                        min=-1, max=1,default=0)
     w_taper = FloatProperty(name="Width Taper", 
                         description="How much to decrease each turn height",
-                        min=0, max=1,default=0)
+                        min=-1, max=1,default=0)
     
 
     def execute(self, context):
@@ -117,7 +111,7 @@ class QuatOperator(bpy.types.Operator):
                                   turn_width=self.turn_width,
                                   turn_height=self.turn_height,
                                   points_per_turn=self.points_per_turn,
-                                  taper=self.taper, w_taper=self.w_taper)
+                                  h_taper=self.h_taper, w_taper=self.w_taper)
         flat_list = []
         for md in mesh_data:
             flat_list.extend(md)
