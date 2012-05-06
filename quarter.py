@@ -18,7 +18,8 @@
 """
 Last Update: May 6, 2012
 Comments:
-Taper height is nice but s taper by width might be nice too.
+Taper Width and Height both work but the code needs a little refactoring
+now.
 """
 
 import bpy
@@ -39,7 +40,7 @@ bl_info = {
 
 
 def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0.0,
-                    points_per_turn=5, taper=0.0):
+                    points_per_turn=5, taper=0.0, w_taper=0.0):
     
     axis = [0,0,-1]
     cur_z = 0
@@ -54,19 +55,27 @@ def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0.0,
     
     turn_heights = []
     for i, q in enumerate(quats):
-        turn_heights.append(turn_height) 
         if i % points_per_turn == 0:
             turn_height -= taper
         turn_heights.append(turn_height) 
-    
+        
     # zero out any negative turn heights
-    turn_heights = [x if x > 0 else 0 for x in turn_heights]   
+    turn_heights = [x if x > 0 else 0 for x in turn_heights]
+    
+    turn_widths = []
+    for i, q in enumerate(quats):
+        if i% points_per_turn == 0:
+            turn_width -= w_taper
+        turn_widths.append(turn_width)
+    
+    # zero out any negative turn widths
+    turn_widths = [x if x > 0 else 0 for x in turn_widths]
     
     vecs = []
     for i, q in enumerate(quats):
         vec = q * Vector((rad,0,cur_z))
         vecs.append(vec)
-        rad+=turn_width
+        rad+=turn_widths[i]
         cur_z+=turn_heights[i]
         
     coords = [(v.x,v.y,v.z) for v in vecs]
@@ -92,7 +101,10 @@ class QuatOperator(bpy.types.Operator):
                     min=-1.0, max=1.0,default=0)
     points_per_turn = IntProperty(name="Points Per Turn",
                     min=3,max=30,default=5)
-    taper = FloatProperty(name="Taper", 
+    taper = FloatProperty(name="Height Taper", 
+                        description="How much to decrease each turn height",
+                        min=0, max=1,default=0)
+    w_taper = FloatProperty(name="Width Taper", 
                         description="How much to decrease each turn height",
                         min=0, max=1,default=0)
     
@@ -105,7 +117,7 @@ class QuatOperator(bpy.types.Operator):
                                   turn_width=self.turn_width,
                                   turn_height=self.turn_height,
                                   points_per_turn=self.points_per_turn,
-                                  taper=self.taper)
+                                  taper=self.taper, w_taper=self.w_taper)
         flat_list = []
         for md in mesh_data:
             flat_list.extend(md)
