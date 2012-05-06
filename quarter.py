@@ -1,18 +1,45 @@
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ##### END GPL LICENSE BLOCK #####
 """
-Quarter.py
-by Phil Cote
-Description: Generates spiral curves using quaternions.
-Status:
-It works pretty well.
+Last Update: May 6, 2012
+Comments:
+Taper height is nice but s taper by width might be nice too.
 """
+
 import bpy
-import bmesh
 from mathutils import Quaternion, Vector
 from math import pi
 from bpy.props import IntProperty, FloatProperty
 
-def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0,
-                    points_per_turn=5):
+
+bl_info = {
+    "name": "Coil Curve Gen",
+    "author": "Phil Cote, cotejrp1",
+    "version": (0, 0, 1),
+    "blender": (2, 6, 3),
+    "location": "View3D > Add > Curve",
+    "description": "Add a coiled bezier curve to the scene.",
+    "warning": "",
+    "category": "Add Curve"}
+
+
+def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0.0,
+                    points_per_turn=5, taper=0.0):
     
     axis = [0,0,-1]
     cur_z = 0
@@ -23,18 +50,28 @@ def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0,
     
     x_vals = [x for x in range(1, point_count+2)]
     x_vals = [(x/ppt)*PI_2 for x in x_vals]
-    quats = [Quaternion(axis, x) for x in x_vals] 
-      
+    quats = [Quaternion(axis, x) for x in x_vals]
+    
+    turn_heights = []
+    for i, q in enumerate(quats):
+        turn_heights.append(turn_height) 
+        if i % points_per_turn == 0:
+            turn_height -= taper
+        turn_heights.append(turn_height) 
+    
+    # zero out any negative turn heights
+    turn_heights = [x if x > 0 else 0 for x in turn_heights]   
+    
     vecs = []
-    for q in quats:
+    for i, q in enumerate(quats):
         vec = q * Vector((rad,0,cur_z))
         vecs.append(vec)
         rad+=turn_width
-        cur_z+=turn_height
-    
+        cur_z+=turn_heights[i]
+        
     coords = [(v.x,v.y,v.z) for v in vecs]
-    print( "coord data")
-    print( coords )
+    
+    
     return coords
 
 
@@ -46,15 +83,19 @@ class QuatOperator(bpy.types.Operator):
     pc = IntProperty(
         name = "Point Count", description = "Point Count",
         min = 3, max = 50, default = 5)
-    radius = IntProperty(
+    radius = FloatProperty(
         name = "Radius", description = "Radius",
-        min = 1, max = 10, default = 1)
+        min = .1, max = 10, default = 1)
     turn_width = FloatProperty(name="Turn Width",
                    min = -.5, max=1.0, default=0)
     turn_height = FloatProperty(name="Turn Height",
                     min=-1.0, max=1.0,default=0)
     points_per_turn = IntProperty(name="Points Per Turn",
                     min=3,max=30,default=5)
+    taper = FloatProperty(name="Taper", 
+                        description="How much to decrease each turn height",
+                        min=0, max=1,default=0)
+    
 
     def execute(self, context):
         
@@ -63,7 +104,8 @@ class QuatOperator(bpy.types.Operator):
                                   point_count=self.pc,
                                   turn_width=self.turn_width,
                                   turn_height=self.turn_height,
-                                  points_per_turn=self.points_per_turn)
+                                  points_per_turn=self.points_per_turn,
+                                  taper=self.taper)
         flat_list = []
         for md in mesh_data:
             flat_list.extend(md)
@@ -87,12 +129,14 @@ class QuatOperator(bpy.types.Operator):
         
 
 def menu_func(self, context):
-    self.layout.operator(QuatOperator.bl_idname)
+    self.layout.operator(QuatOperator.bl_idname,
+                            text="Add Coil Curve",
+                            icon = "PLUGIN")
 
 
 def register():
     bpy.utils.register_class(QuatOperator)
-    bpy.types.INFO_MT_mesh_add.append(menu_func)
+    bpy.types.INFO_MT_curve_add.append(menu_func)
 
 
 def unregister():
