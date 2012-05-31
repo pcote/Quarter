@@ -51,14 +51,10 @@ def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0.0,
     def taper_values(turn_factor, taper):
         """Adjust heights or widths for tapering as needed"""
         new_list = []
-        
         for i, q in enumerate(quats):
             if i % points_per_turn == 0:
                 turn_factor -= taper
             new_list.append(turn_factor)
-        
-        # zero out negative values
-        #new_list = [x if x > 0 else 0 for x in new_list]
                 
         return new_list        
     
@@ -73,8 +69,6 @@ def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0.0,
         cur_z+=turn_heights[i]
         
     coords = [(v.x,v.y,v.z) for v in vecs]
-    
-    
     return coords
 
 
@@ -101,6 +95,12 @@ class QuatOperator(bpy.types.Operator):
     w_taper = FloatProperty(name="Width Taper", 
                         description="How much to decrease each turn height",
                         min=-1, max=1,default=0)
+    bevel_depth = FloatProperty(name="Bevel Depth",
+                            description = "Amount of Bevel",
+                            min = 0, max = 1, default = 0)
+    extrude_mod = FloatProperty(name="Extrude",
+                            description = "Amount of Extrude",
+                            min = 0, max = 1, default = 0)
     
 
     def execute(self, context):
@@ -121,12 +121,14 @@ class QuatOperator(bpy.types.Operator):
         spln = crv.splines.new(type="BEZIER")
         points = spln.bezier_points
         points.add(self.pc-1)
-        
         points.foreach_set("co", flat_list)
-        for point in points:
-            point.handle_left_type = "AUTO"
-            point.handle_right_type = "AUTO"
-         
+        
+        for i, point in enumerate(points):
+            if i > 0:
+                point.handle_left_type = point.handle_right_type = "AUTO"
+        
+        crv.bevel_depth = self.bevel_depth
+        crv.extrude = self.extrude_mod
         ob = bpy.data.objects.new("quat_ob", crv)        
         bpy.context.scene.objects.link(ob)
         
