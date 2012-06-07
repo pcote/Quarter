@@ -20,8 +20,8 @@
 import bpy
 from mathutils import Quaternion, Vector
 from math import pi
-from bpy.props import IntProperty, FloatProperty
-
+from bpy.props import IntProperty, FloatProperty, EnumProperty
+from pdb import set_trace
 
 bl_info = {
     "name": "Coil Curve Gen",
@@ -77,6 +77,14 @@ class QuatOperator(bpy.types.Operator):
     bl_label = "Add Quat"
     bl_options = {'REGISTER', 'UNDO'}
     
+    # nurbs disabled until I get the kinks worked out for that type.
+    curve_choices = (('BEZIER', 'BEZIER', 'BEZIER'), 
+                      ('POLY', 'POLY', 'POLY'), 
+                      #('NURBS', 'NURBS', 'NURBS')
+                     )
+    curve_type = EnumProperty( name="Curve Type", items=curve_choices,
+                     description="Choice of curve type: note yet implemented")
+                     
     pc = IntProperty(
         name = "Point Count", description = "Point Count",
         min = 3, max = 50, default = 5)
@@ -115,16 +123,24 @@ class QuatOperator(bpy.types.Operator):
         flat_list = []
         for md in mesh_data:
             flat_list.extend(md)
+            if self.curve_type in ('POLY', 'NURBS'):
+                flat_list.append(0.0)
             
         # build the curve
         crv = bpy.data.curves.new("crv", type="CURVE")
-        spln = crv.splines.new(type="BEZIER")
-        points = spln.bezier_points
+        spln = crv.splines.new(type=self.curve_type)
+        if self.curve_type in ('POLY', 'NURBS'):
+            points = spln.points
+        else:
+            points = spln.bezier_points
+        
+        if self.curve_type == 'BEZIER':
+            pass #set_trace()
         points.add(self.pc-1)
         points.foreach_set("co", flat_list)
         
         for i, point in enumerate(points):
-            if i > 0:
+            if i > 0 and hasattr(point, "handle_left_type"):
                 point.handle_left_type = point.handle_right_type = "AUTO"
         
         crv.bevel_depth = self.bevel_depth
@@ -151,5 +167,19 @@ def unregister():
     bpy.utils.unregister_class(QuatOperator)
     bpy.types.INFO_MT_mesh_add.remove(menu_func)
 
+
+def delete_all():
+    """quick scene deletion function to use when in development"""
+    scn = bpy.context.scene
+    for ob in scn.objects[:]:
+        scn.objects.unlink(ob)
+    
+    for ob in bpy.data.objects[:]:
+        bpy.data.objects.remove(ob)
+    
+    for crv in bpy.data.curves[:]:
+        bpy.data.curves.remove(crv)
+            
 if __name__ == "__main__":
+    delete_all()
     register()
