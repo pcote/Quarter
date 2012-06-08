@@ -1,3 +1,8 @@
+# quarter.py
+# by Phil Cote
+# Description:
+# A curve coil generator for usage with bezier curves and poly lines.
+#
 # ##### BEGIN GPL LICENSE BLOCK #####
 #
 #  This program is free software; you can redistribute it and/or
@@ -21,7 +26,7 @@ import bpy
 from mathutils import Quaternion, Vector
 from math import pi
 from bpy.props import IntProperty, FloatProperty, EnumProperty
-from pdb import set_trace
+
 
 bl_info = {
     "name": "Coil Curve Gen",
@@ -72,16 +77,14 @@ def get_mesh_data(rad=5, point_count=10, turn_width=.5, turn_height=0.0,
     return coords
 
 
-class QuatOperator(bpy.types.Operator):
-    bl_idname = "mesh.primitive_quat_add"
-    bl_label = "Add Quat"
+class AddCoilOperator(bpy.types.Operator):
+    """Adds a customizable bezier or polyline curve to the scene"""
+    bl_idname = "curves.curve_coil_add"
+    bl_label = "Add Curve Coil"
     bl_options = {'REGISTER', 'UNDO'}
     
-    # nurbs disabled until I get the kinks worked out for that type.
     curve_choices = (('BEZIER', 'BEZIER', 'BEZIER'), 
-                      ('POLY', 'POLY', 'POLY'), 
-                      #('NURBS', 'NURBS', 'NURBS')
-                     )
+                      ('POLY', 'POLY', 'POLY'))
     curve_type = EnumProperty( name="Curve Type", items=curve_choices,
                      description="Choice of curve type: note yet implemented")
                      
@@ -153,33 +156,20 @@ class QuatOperator(bpy.types.Operator):
         
 
 def menu_func(self, context):
-    self.layout.operator(QuatOperator.bl_idname,
+    self.layout.operator(AddCoilOperator.bl_idname,
                             text="Add Coil Curve",
                             icon = "PLUGIN")
 
 
 def register():
-    bpy.utils.register_class(QuatOperator)
+    bpy.utils.register_class(AddCoilOperator)
     bpy.types.INFO_MT_curve_add.append(menu_func)
 
 
 def unregister():
-    bpy.utils.unregister_class(QuatOperator)
+    bpy.utils.unregister_class(AddCoilOperator)
     bpy.types.INFO_MT_mesh_add.remove(menu_func)
 
-
-def delete_all():
-    """quick scene deletion function to use when in development"""
-    scn = bpy.context.scene
-    for ob in scn.objects[:]:
-        scn.objects.unlink(ob)
-    
-    for ob in bpy.data.objects[:]:
-        bpy.data.objects.remove(ob)
-    
-    for crv in bpy.data.curves[:]:
-        bpy.data.curves.remove(crv)
             
 if __name__ == "__main__":
-    delete_all()
     register()
